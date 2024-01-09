@@ -61,6 +61,4 @@ pluralizelisttitles = false
     text_color_dark = "#EEE"                        # default is #EEE
 
 [taxonomies]
-    series = 'series'
     tags = 'tags'
-    category = 'categories'
