@@ -15,7 +15,7 @@ pluralizelisttitles = false
     front_page_content = [ "posts" ]
 
     menu = [
-        {Name = "About", URL = "/about/"},
+        {Name = "About", URL = "/about/", hasChildren = false},
         {Name = "Posts", URL = "/posts/", Pre = "Recent"},
     ]
     email_url = "mailto://nikolamilosa20@gmail.com"
@@ -63,3 +63,4 @@ pluralizelisttitles = false
 [taxonomies]
     series = 'series'
     tags = 'tags'
+    category = 'categories'
