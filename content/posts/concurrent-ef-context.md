@@ -1,7 +1,6 @@
 ---
 title: "Using .NET EF Context concurrently"
 date: 2024-01-11T19:03:20+01:00
-draft: true
 tags: [ ".net", "ef", "tutorial" ]
 ---
 
@@ -9,7 +8,7 @@ Code for all the examples can be found on [this repository](https://github.com/N
 
 So a couple of days ago I was asked if I could take a look at the code that a collegue wrote. If I was to be honest about what I really like about my work that would be looking at unexpected issues people encounter and trying to solve them. I've never felt the same about discovering solutions to my problems and to problems of others probably because I usually expect my problems down the line whilst with others they just pop up and go randomly. 
 
-Anyway a collegue has an ASP.NET Core API that is used for a billing project and one of their requirements is to create some sort of files that are reports of people doings every so often (Usually based on a request from some kind of frontend) and then return them a cheerful *OK!* once the process is done. Now they've noticed that in while processing an array of reports, each report is individual and is not dependant of any other reports. 💡 An idea popped!
+Anyway a collegue has an ASP.NET Core API that is used for a billing project and one of their requirements is to create some sort of files that are reports of people doings every so often (Usually based on a request from some kind of frontend) and then return them a cheerful *OK!* once the process is done. Now they've noticed that while processing an array of reports, each report is individual and is not dependant of any other reports. 💡 An idea popped!
 
 > "Hey! This functionallity is really slow I was hoping we could optimize it somehow..."
 
@@ -99,8 +98,7 @@ Now from a higher look one would expect that database handles concurrent request
 ~~~c#
 builder.Services.AddDbContextPool<AppDbContext>(x =>
 {
-    x.UseSqlite(AppDbContextFactory.ConnectionString);
-    
+    x.UseSqlite(AppDbContextFactory.ConnectionString); 
 });
 ~~~
 Here we add a pool of context's (namely 1024 by default) which are instantiated when the first request hits the API. The pool manager then caches those connections and reuses them meaning that you don't have to open new connections to the database on each request. We all knew that so lets move on.
@@ -124,7 +122,7 @@ linkid=2097913.
 When reading the error message the problem is obvious. The DbContext wasn't meant to be used like this. But we *reeeeeeeeeeeeeally* need this to work so how can we do it?
 
 ## Attempt 1: Mutex
-One would think that having a `Mutex` would save you and while that is true to some extent, you probably lose a lot. I've been playing a lot with [Rust](https://www.rust-lang.org/) and I've been coding for about a year and a half and one thing that I got from it is that if I am using mutexes I am losing a lot and I don't know how to actually solve the problem at hand. 
+One would think that having a `Mutex` would save you and while that is true to some extent, you probably lose a lot. I've been playing a lot with [Rust](https://www.rust-lang.org/) and I've been coding for about a year and a half and one thing that I got from it is that if I am using mutexes I don't know how to actually solve the problem at hand. 
 
 Looking at the code we would have to write to **actually** get the similar output we did in the [sequential approach](#sequential-approach) we would need to write something like:
 ~~~c#
@@ -178,7 +176,7 @@ public async Task<IActionResult> Mutex(char[] letters)
     return Ok("Done");
 }
 ~~~
-If this is added then the code will execute more randomly and the result may differ from execution to execution but at the end of the day since IO is so slow it will result in three log messages that print all the same letters meaning that we have handled the writes and reads correctly but are limited with database itself. It didn't really surprise me since databases are always the bottleneck of the system. What I really don't like about this approach is that we are adding a lot of code to a simple feature. If the feature was a reallife requirement then maybe this is justifyable but at the end imagine refactoring code and adding/removing these waits and releases... A sure deadlock bug will hapen at one point.
+If this is added then the code will execute more randomly and the result may differ from execution to execution but at the end of the day since IO is so slow it will result in three log messages that print all the same letters meaning that we have handled the writes and reads correctly but are limited with database itself. It didn't really surprise me since databases are always the bottleneck of the system. What I really don't like about this approach is that we are adding a lot of code to a simple feature. If the feature was a reallife requirement then maybe this is justifyable but at the end imagine refactoring code and adding/removing these waits and releases... A sure deadlock bug will happen at one point.
 
 ## Attempt 2: Not using context from DI and creating new connection each time
 
@@ -215,7 +213,7 @@ There is one thing that I don't like about this solution and what actually got m
 
 ## Attempt 3: Using IDbContextPool
 
-This has to be the most amazing find (atleast for me in dotnet EF). Now the code that I am going to share with you isn't something Microsoft ties to maintaining. They themselves state that the code could be changed and implementations should tie to it. But we always liked living on the edge and therefore I present to you the optimal solution that uses cached connections from DI container and that properly restores them and waits for them if all are in use meaning that no new connections are spawned and database shouldn't experience any more heardle than before:
+This has to be the most amazing find (atleast for me in dotnet EF). Now the code that I am going to share with you isn't something Microsoft ties to maintaining. They themselves state that the code could be changed and implementations shouldn't tie to it. But we always liked living on the edge and therefore I present to you the optimal solution that uses cached connections from DI container and that properly restores them and waits for them if all are in use meaning that no new connections are spawned and database shouldn't experience any more heardle than before:
 ~~~c#
 private readonly ILogger<LetterController> _logger;
 private readonly IDbContextPool<AppDbContext> _dbContextPool;
@@ -264,7 +262,7 @@ The awesome thing about this is that the cached connections are enough to bring 
 ~~~
 
 ## Conclusion
-This was a fun little exploration about how can we achieve a pretty edge case scenario and still get away with maintaining the code readable and efficient. In my opinion databases are the biggest and most cherished thing we own in a system and we should try and use it efficiently. I've seen some projects that couldn't achieve the desired performance with the highest paying subscription for databases on cloud and that wasn't because their usecases were hard or difficult but rather due to the lack of expertise and lack of this kind of exploration. 
+This was a fun little exploration about how can we achieve a pretty edge case scenario and still get away with maintaining the code readable and efficient. In my opinion databases are the biggest and most cherished thing we own in a system and we should try and use it efficiently. I've seen some projects that couldn't achieve the desired performance with the highest paying subscription for databases on cloud and that wasn't because their usecases were different or difficult but rather due to the lack of expertise and lack of this kind of exploration. 
 > Should they go and optimize their code to use something like this in a lot of places and be done with it?   
 
 Probably no. This isn't a silver bullet and things like this are a mere trick to squeeze the last 5-10% if possible. I would like to explore dealing with big data systems and optimizing database access on a lot of levels and I will for sure write a post about that if I do.
