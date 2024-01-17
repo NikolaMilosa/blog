@@ -1,0 +1,45 @@
+.copy-button {
+    background: none;
+    border: none;
+  
+    width: 24px;
+    height: 24px;
+    background-image: url("/icons/copy_content.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  
+    position: sticky;
+    left: calc(100% - 15px);
+    z-index: 10;
+  
+    padding: 10px;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+  }
+  
+  .copy-button:hover {
+    opacity: 0.8;
+  }
+  
+  .copy-button:active {
+    transform: scale(0.95);
+    opacity: 0.7; 
+  }
+
+  .copy-success {
+    background: none;
+    border: none;
+  
+    background-image: url("/icons/copy_success.svg");
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  
+    position: sticky;
+    left: calc(100% - 15px);
+    z-index: 10;
+    padding: 10px;
+  }
