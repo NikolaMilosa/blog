@@ -6,6 +6,7 @@ paginate = 10
 languageCode = "en"
 theme = "poison"
 pluralizelisttitles = false
+disqusShortname = 'mili-writes-tech'
 
 [params]
     brand = "Mili writes tech"
@@ -59,6 +60,7 @@ pluralizelisttitles = false
     table_border_color_dark = "#515151"             # default is #515151
     table_stripe_color_dark = "#202020"             # default is #202020
     text_color_dark = "#EEE"                        # default is #EEE
+
 
 [taxonomies]
     tags = 'tags'
