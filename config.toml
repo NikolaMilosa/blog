@@ -64,3 +64,4 @@ disqusShortname = 'mili-writes-tech'
 
 [taxonomies]
     tags = 'tags'
+    series = 'series'
