@@ -37,3 +37,79 @@ This series will be related to solving some problems which we had which weren't 
 ## My goal
 
 I wanted to dedicate this series to my way of learning bazel. My collegue set up our workspace and some CI and we all just did our bits and pieces of adding the stack that we own and we kind of made it work. What I wanted to do is setup everything myself and see how I would do it and find my way through. When the time comes I will tell a story of what problem acutally made me interested in the whole topic to begin with but that will come in some weeks, until then we have to setup everything up and to get the basics together.
+
+## The build concepts
+
+This post will be more of a reading journey and a discussion of their [docs](https://bazel.build/start). I would like to deep dive into some action right away but I feel like me and bazel started of on a wrong foot you know... I haven't really read any documentation, any concepts, nothing. It was just plain head bashing and random posts here and there until I didn't start to get interested in the topic. 
+
+So to do it right I want to dedicate a post to the concepts. They themselves state that there are six concepts:
+1. [Workspaces, packages & targets](#1-workspaces-packages--targets)
+2. [Labels](#2-labels)
+3. [`BUILD` files](#3-build-files)
+4. [Dependencies](#4-dependencies)
+5. [Visiblity](#5-visiblity)
+6. [Hermeticity](#6-hermeticity)
+
+And that is the order in which I will cover them so here goes!
+
+### 1. Workspaces, packages & targets
+
+> Bazel builds software from source code organized in directory trees called repositories. A defined set of repositories comprises the workspace. Source files in repositories are organized in a nested hierarchy of packages, where each package is a directory that contains a set of related source files and one BUILD file. The BUILD file specifies what software outputs can be built from the source.
+
+So to have a workspace one needs to create a directory with `WORKSPACE.bazel` file. For now the contents of the file can be as follows:
+```python
+workspace(name = "playground")
+``` 
+The language they use is called [starlark](https://bazel.build/rules/language) to which I will probably dedicate a whole post later on in this series. Right away if you run `bazel build` it will do a couple of things:
+1. It will install the newest version of the tool
+2. It will add a couple of more directories and folders which the tool uses
+3. Download some deps it needs
+
+So lets create a folder structure that resembles the following
+```bash
+.
+├── BUILD.bazel
+├── MODULE.bazel
+├── MODULE.bazel.lock
+├── more-repos
+│   └── source
+│       ├── BUILD.bazel
+│       └── script.sh
+├── repos
+│   ├── BUILD.bazel
+│   └── source
+│       ├── BUILD.bazel
+│       └── script.sh
+└── WORKSPACE.bazel
+```
+What I wanted to test is if the `BUILD.bazel` is required in all the directories for the target to be discoverable but its not. If you run the following command you can see all the targets in your workspace:
+```bash
+bazel query ...
+//more-repos/source:script
+//repos/source:script
+```
+For the sake of completness (if someone is following along the boring part) here is the content of both `more-repos/sources/BUILD.bazel` and `repos/sources/BUILD.bazel`:
+```python
+sh_binary(
+    name = "script",
+    srcs = ["script.sh"]
+)
+```
+If you want to build a target you can run `bazel build //repos/sources:script` or if you want to run you can do `bazel run //repos/sources:script`. Pretty neat stuff so far.
+
+There is a handy definition by the bazel team which if I read earlier I wouldn't need to test the hypothesis but no pain no gain:
+> A package is defined as a directory containing a BUILD file named either BUILD or BUILD.bazel. A package includes all files in its directory, plus all subdirectories beneath it, except those which themselves contain a BUILD file. From this definition, no file or directory may be a part of two different packages.
+
+To clarify they've further added explainations to what are files in their system. A file can be either *source* file which are written by people, or a *generated* file (sometimes called *derived* or *output* files) which are generated from *source* files. Files are the first kind of **targets**
+
+The second type of **targets** are declared with a *rule*. A *rule* is basically a relationship between a set of input and a set of output files. The inputs to a rule may be source files or the output of other *rules*.
+
+### 2. Labels
+
+### 3. `BUILD` files
+
+### 4. Dependencies
+
+### 5. Visiblity
+
+### 6. Hermeticity
