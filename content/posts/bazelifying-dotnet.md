@@ -8,27 +8,26 @@ series: Learning Bazel
 
 Code for all the examples can be found on [this repository](https://github.com/NikolaMilosa/background-worker-example)
 
-This has to be one of the worst experiences I've had dealing with some code regarding dotnet. To be honest first time in forever I was stuck bashing my head thinking will I be able to do this and to be honest, I am not sure I truly did it. Anyway I am here to discuss what I found and what I managed to learn.
+This has to be one of the worst experiences I've had dealing with some code regarding dotnet. To be honest first time in forever I was stuck bashing my head thinking will I be able to do this and at the end, I am not sure I truly did it. Anyway I am here to discuss what I found and what I managed to learn.
 
 ## Setup
 
-So to learn the tool I think one has to get a lot of hands on experience with a tool and the whole ecosystem. Bazel has a lot of subcommunities within itself. Which is kind of expected. You have a tool that is built in a way where each language community has to come and add their things. I feel like nobody will add rules for a language if nobody needs them. Which is kind of expected. 
+So to learn the tool I think one has to get a lot of hands on experience with a tool and the whole ecosystem. Bazel has a lot of subcommunities within itself. Which is kind of expected. You have a tool that is built in a way where each language community has to come and add their things. I feel like nobody will add rules for a language if nobody needs them. To some extent expected, although this time it feels like this tool will never mature.
 
-What I wanted to do is take a project I tackled in one of the previous posts and bazelify it. I chose the one from [backgournd worker](/posts/background-services-dotnet) example and wrap it around bazel. What that would give is hermetic builds on each machines and technically one wouldn't need anything. Just bazel and you rock... Right...
+What I wanted to do is take a project I tackled in one of the previous posts and bazelify it. I chose the one from [backgournd worker](/posts/background-services-dotnet) example and wrapped it around bazel. What that would give is hermetic builds on each machines and technically one wouldn't need anything. Just bazel and you rock... Right...
 
 **NOTE**: The statement above wasn't right, don't listen to *you just need* statements
 
 What you actually need is:
 1. dotnet - the tool, you can use any version you want since you will use bazel from now onwards!
 2. [paket](https://fsprojects.github.io/Paket/) - a tool used for managing dependancies in .net. Its like nuget gallery but you have your deps in a different file. Prior to this I haven't honestly played with it so I don't have an opinion. I see clear benefits of using it in some places but in 90% of the times I feel like nuget gallery does the job
-
-To clarify you need dotnet just to install the paket tool and run it. 
+3. podman/docker - at the end we will get an image and we want to be able to run it and easily deploy it wherever.
 
 ## WORKSPACE and MODULE.bazel
 
 This part was pretty easy and it worked right off the bat. Basically you go to [their releases](https://github.com/bazelbuild/rules_dotnet/releases) and copy the contents of `MODULE.bazel` and `WORKSPACE` into corresponding places. After that you have to configure `paket`. On their site I had to follow just a [Get started](https://fsprojects.github.io/Paket/get-started.html) guide and I did what I needed to do. When you have your `paket.dependencies` and `paket.lock` you can move to the next step.
 
-Now we need to linkup those two! For that good folks on the repository wrote a tool called `paket2bazel` which can be found [here](https://github.com/bazelbuild/rules_dotnet/tree/master/tools/paket2bazel). Its nice to write the correct mappers for such tedious things since my current bazel experience has been just that. Tedious. Usually writing more things than I really should.
+Now we need to linkup those two! For that, good folks on the repository wrote a tool called `paket2bazel` which can be found [here](https://github.com/bazelbuild/rules_dotnet/tree/master/tools/paket2bazel). Its nice to write the correct mappers for such tedious things since my current bazel experience has been just that. Tedious. Usually writing more things than I really should.
 
 Anyway. A TL;DR is the following:
 1. add the following to the `WORKSPACE`:
@@ -47,7 +46,7 @@ load("//:paket.main.bzl", "main")
 main()
 ```
 
-Now there is a couple of things on which I would like to comment. *First*: **THE ORDER IS IMPORTANT**. You cannot do 1. and 3. and then 2. since bazel will not be able to evaluate whole `WORKSPACE` hence you won't be able to run the command... That is tedious but okay, memorable... *Second* **IN THEIR DOCS THEY MISPELLED IT**. Probably in the speed or in the development they forgot to update the steps and for someone who just wants to add something that works you really lose a lot of time on such weird things. If I was better at the tool I would've noticed it right away but here I am ranting about README files. Who would've thought 😢.
+Now there is a couple of things on which I would like to comment. *First*: **THE ORDER IS IMPORTANT**. You cannot do 1. and 3. and then 2. since bazel will not be able to evaluate whole `WORKSPACE` hence you won't be able to run the command... That is tedious but okay, memorable... *Second* **IN THEIR DOCS THEY MISPELLED IT**. Probably in the speed or in the development they forgot to update the steps and for someone who just wants to add something that works you really lose a lot of time on such weird things. If I was better at bazel I would've noticed it right away but here I am ranting about README files. Who would've thought 😢.
 
 Now part that wasn't correctly discussed is the setup that is needed to load paket deps fully. Thankfully when you follow examples from the `examples` folder of their repository you can find everything you need. What is missing is to add to `MODULE.bazel` something like this:
 ```python
@@ -85,10 +84,10 @@ When you add all your bazel files the issue you will run into is pretty common. 
 I went with the second approach. What I did is migrate to the following structure:
 ```bash
 .
-├── bazel-BackgroundWorkerDotnet -> /home/nikola/.cache/bazel/_bazel_nikola/19a8b2ab786c133f994eaf51038f4bfe/execroot/_main
-├── bazel-bin -> /home/nikola/.cache/bazel/_bazel_nikola/19a8b2ab786c133f994eaf51038f4bfe/execroot/_main/bazel-out/k8-fastbuild-ST-bd42dc04ad95/bin
-├── bazel-out -> /home/nikola/.cache/bazel/_bazel_nikola/19a8b2ab786c133f994eaf51038f4bfe/execroot/_main/bazel-out
-├── bazel-testlogs -> /home/nikola/.cache/bazel/_bazel_nikola/19a8b2ab786c133f994eaf51038f4bfe/execroot/_main/bazel-out/k8-fastbuild-ST-bd42dc04ad95/testlogs
+├── bazel-BackgroundWorkerDotnet 
+├── bazel-bin 
+├── bazel-out 
+├── bazel-testlogs 
 ├── BUILD.bazel
 ├── MODULE.bazel
 ├── paket.dependencies
@@ -114,7 +113,16 @@ Having done this you are left to *bazelify* the app!
 
 ## Bazelifying ASP.NET core
 
-This has to be one of more tedious jobs I've done in recent time. With some better structuring I could've written `glob([])` for specifying what files should be included in the binary itself but since I had only a few files I've gone and manually entered them. The first step is to create your `BUILD.bazel` for your app. 
+Before going forwar I want to say what I mean by *bazelify*. I want to be able to do following things with my app:
+1. I want to be able to build and run the app
+2. I want to be able to build an OCI image which I can publish to some container registry
+3. I want to be able to run image from step 3.
+
+This sounds like a walk in the park 🌲!
+
+### Building and running the app with bazel
+
+With some better structuring I could've written `glob([])` for specifying what files should be included in the binary itself but since I had only a few files I've gone and manually entered them. The first step is to create your `BUILD.bazel` for your app. 
 
 When you declare a package you can add `csharp_binary` in there and mine looked like this:
 ```python
@@ -165,7 +173,100 @@ I've also made a small change in code in `Program.cs`
 ```
 Which tells the code on which port and host it should listen. I did it so I don't have to include `appsetings` and `launchProperties` to the mix since I can declare everything programatically.
 
-## Packaging and building an image
+### Packaging and building an image
+
+And this is where the pain and agony begin. This where you are pretty much stuck on your own. You have to read the docs multiple times. You can't really make anything out of hello world examples, even though you, yourself may be building a hello world example... But don't worry, I've lost some hair so you can do it easier.
+
+Even though this may sound easy you really have to work for it. The first thing to do is to publish the binary locally. You can do that like this:
+```python
+publish_binary(
+    name = "background-worker-publish",
+    binary = ":background-worker",
+    self_contained = True,
+    target_framework = "net7.0",
+    runtime_packs = [
+        "@paket.main//microsoft.aspnetcore.app.runtime.linux-x64",
+        "@paket.main//microsoft.netcore.app.runtime.linux-x64",
+    ]
+)
+```
+What this does is actually packages the app and really is equivalent to a `dotnet publish`. What is really cool is the `self_contained` part which adds some dependencies to your app so it doesn't depend of dotnet when you deploy it since it will be packaged within. Maybe its just me, maybe its all of us but I was stuck here since for me *publishing* is related to doing some kind of a *push* and I didn't even notice this rule for a long time. Now to collect all the things that are output from the publish we need to add another archive in `WORKSPACE.bazel`:
+```python
+http_archive(
+    name = "rules_pkg",
+    sha256 = "8f9ee2dc10c1ae514ee599a8b42ed99fa262b757058f65ad3c384289ff70c4b8",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.9.1/rules_pkg-0.9.1.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.9.1/rules_pkg-0.9.1.tar.gz",
+    ],
+)
+
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
+rules_pkg_dependencies()
+```
+Alongside a small change in `MODULE.bazel`:
+```python
+bazel_dep(name = "rules_pkg", version = "0.9.1")
+```
+With this new toy we are able to do some nasty packaging and bundling of things. This set of rules is really a story for it self. What we will use it for is to package everything as `.tar` and continue forward. To do that we have to modify our `BUILD.bazel` with following lines:
+```python
+pkg_tar(
+    name = "background-worker_layer",
+    srcs = [":background-worker-publish"],
+    include_runfiles = True,
+)
+```
+After adding that and the corresponding `load()` at the top of the file you should be able to run something like `bazel build //src:background-worker_layer` and you should get packaged tar on the route `bazel-out/k8-fastbuild/bin/src/background-worker_layer.tar`. I wouldn't even mention this if this wasn't super helpful to me for debugging. See, in bazel world you are usually on your own and having this is really great since you can inspect what is packaged and how in the tar file. Usually some paths will be off and with this you can look for correct paths.
+
+Now for the part of building an OCI image. In recent times I wanted to frustrate myself with building *THE SMALLEST POSSIBLE* images and tried to go as small as possible and usually had to deal with a lot of pain from that. So I wanted to do the same with this one. Again lets add some more tools to the `WORKSPACE.bazel`:
+```python
+load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
+
+rules_oci_dependencies()
+
+load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "oci_register_toolchains")
+
+oci_register_toolchains(
+    name = "oci",
+    crane_version = LATEST_CRANE_VERSION,
+)
+
+load("@rules_oci//oci:pull.bzl", "oci_pull")
+oci_pull(
+    # tag = bookworm-20231218-slim
+    name = "debian-slim",
+    digest = "sha256:45287d89d96414e57c7705aa30cb8f9836ef30ae8897440dd8f06c4cff801eec",
+    image = "index.docker.io/library/debian",
+)
+```
+> I just wanted to take a minute and say how frustrating docker and dockerhub is. They had to do everything their own way and the pain of finding the correct url was immense. Anyway lets move on...
+After this we can add a couple of more things to `BUILD.bazel` and get the following result:
+```python
+oci_image(
+    name = "background-worker-image",
+    base = "@debian-slim",
+    entrypoint = ["/background-worker"],
+    tars = [":background-worker_layer"],
+    env = {
+        "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1"
+    }
+)
+
+oci_tarball(
+    name = "background-worker-tarball",
+    image = ":background-worker-image",
+    repo_tags = [ "ghcr.io/nikolamilosa/background-worker-example/background-worker:latest" ]
+)
+```
+With this we've completed the setup for the things we've set out to do. When you build the image you can import it in your local container registry with:
+```bash
+p load --input bazel-out/k8-fastbuild/bin/src/background-worker-tarball/tarball.tar
+```
+
+Please for the love of god save yourselves some pain and use [`dive`](https://github.com/wagoodman/dive). Once you build and import the image you will probably have some runtime errors which will need addressing. Be it paths or whatever you can inspect images with this tool and I use it daily.
+
+I managed to build a whole image with 177MB which is great for an interpreted language that depends on a runtime.
 
 ## Conclusion
 
