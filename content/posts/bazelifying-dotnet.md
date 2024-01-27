@@ -1,7 +1,6 @@
 ---
 title: "Part II: Bazelifying Dotnet"
 date: 2024-01-25T18:30:58+01:00
-draft: true
 tags: [ "bazel", "dotnet", "tooling" ]
 series: Learning Bazel
 ---
@@ -270,6 +269,12 @@ I managed to build a whole image with 177MB which is great for an interpreted la
 
 ## Conclusion
 
-!TODO: talk about using nuget manager in parallel with paket or using paket only or anything else?
-!TODO: talk about a bad dev exp since you have to manually add all deps in `csharp_binary`
-!TODO: Maybe extension points
+Generally is using paket better than microsofts package manager? Well I don't know. As far as I know its pretty hard to specify a certain sha256 of a package you are expecting. Imagine you want to use Microsoft.EntityFrameworkCore version 8.0.1. You would go and add it via its manager probably in Visual Studio or maybe through CLI with `dotnet add package Microsoft.EntityFrameworkCore --version 8.0.1`. What you would expect is that now everyone who is using that package gets the same library. With using paket you can have some benefits since you can get it to require certain commits or SHA of a package so you know that the package itself wasn't tampored with. It is more declarative and I think that its going to be more and more helpful since we are entering the era of full automatization and being 100% sure you know what is going in and out of the app fully is really necessary.
+
+Having said that here is a direct counter to that argument with a next observation. Lets say your package requires a dependency A. Now that dependency has a dependency on a package B. You would **yourself** have to specify that both of those packages should be included in `csharp_binary`. This was a little frustrating but I believe that there has to be a way to write a simple script that generates what should be put in `csharp_binary` deps so you don't have to dig in and find out everything. 
+
+What I've learned is how bad bazel is for languages that have a runtime. Maybe its just its ecosystem or maybe its just that it was thought out in a way for projects that are more thought through. It feels like you have to do a lot of heavy lifting to find out the direct meaning of the documentation itself. If I didn't have `dive` and manually inspected the layer I wouldn't be able to nail down the correct paths. And in the end I didn't even need those. All in all, I think bazel has its place since its caching mechanism is great and can be super benefitial to save time in testing and building, but I wouldn't recommend it to everyone and to everything.
+
+There is still some playing I want to do with bazel and I have in mind some more ideas to extend this series which will hapen for sure. The journey of bazel is just beginning and I am excited to see what else is there to be found out. 
+
+Until then, cheers!
