@@ -1,13 +1,12 @@
 ---
 title: "Micro-SaaS on the horizon?"
 date: 2024-02-01T14:30:58+01:00
-draft: true
 tags: [ "python", "llm", "rust" ]
 ---
 
 Code for all the examples can be found on [this repository](https://github.com/NikolaMilosa/opinion-miner/tree/10bbff3dda728469842d6a681d35150f9d0cf404).
 
-This has to be the first time my head flooded with ideas on how can this be turnt into a large scale project. Even a micro-saas! Maybe this blogging thing is starting to produce its benefits! This weeks work was directed towards a POC for an opinion miner that I wanted to create. The idea is the following:
+This has to be the first time my head flooded with ideas on how can this be turnt into a profitable project. Even a micro-saas! Maybe this blogging thing is starting to produce its benefits! This weeks work was directed towards a PoC for an opinion miner that I wanted to create. The idea is the following:
 > When someone needs to find out what does the general public think of a certain topic who to ask?
 
 Google-ing is tedious as you need to spend hours reading blogs and the problem is that even if you do that a lot of content is AI generated and you really waste your time there. So how about automating it?
@@ -52,7 +51,7 @@ pub trait Fetcher: Sized {
     fn from_cli(cli: &Cli, token: CancellationToken) -> Result<Self, Error>;
 }
 ```
-I'm in the motion of writing clean simple cli's that are really good at doing one thing and doing one thing good and I chose the output of this cli to be a standard out. That way you can easily pipe it to another program, or even spawn it from something else and captcure its output as it is eventually comming. 
+I'm in the motion of writing clean simple cli's that are really good at doing one thing and I chose the output of this cli to be a standard out. That way you can easily pipe it to another program, or even spawn it from something else and captcure its output as it is eventually comming. 
 
 As for the code of the fetcher itself it will implement all sorts of platforms and ideas. One fetcher that I've implemented is a simple API fetcher and it uses `reqwest` to fetch the data. The only problem I've had that I think forem communicated poorly is that you have to specify a `User-Agent` header or it will return access denied even if you don't really need the token. To create the fetcher from cli implementation is as follows:
 ```rust
@@ -172,7 +171,7 @@ The real juicy part starts somewhere here. At least it did for me. There is mult
 2. I could train my own AI which could do something like that.
 3. Or I could just ask somebody else to do it? And do it for free (-ish)...
 
-This is the first time where I wanted to deploy a local instance of some LLM and try to integrate it in the solution. So technically I went with the third option. A quick Google search later I found [modelz](https://github.com/tensorchord/modelz-llm) which I could easily port into my python script and *voila* I have myself a local chatbot! On their repository they state the models they support and what are the recommended settings for running. Since my work laptop doesn't have a GPU I was left to play with two CPU models that come from bloomz. They don't have a lot of parameters but for a demo they are nice. What I like the most about it is that it was easy to test. For a production service you probably wouldn't use your own chatbot since you need some basic stuff.
+This is the first time where I wanted to deploy a local instance of some LLM and try to integrate it in the solution. So technically I went with the third option. A quick Google search later I found [modelz](https://github.com/tensorchord/modelz-llm) which I could easily port into my python script and *voila* I have myself a local chatbot! On their repository they state the models they support and what are the recommended settings for running. Since my work laptop doesn't have a GPU I was left to play with two CPU models that come from bloomz. They don't have a lot of parameters but for a demo they are nice. What I like the most about it is that it was easy to test. For a production service you probably wouldn't use your own chatbot since you need some advanced hardware stuff and you are better off paying some money than trying to do it yourself.
 
 Since the text that I scraped was html I used [beautifulsoup](https://pypi.org/project/beautifulsoup4/) to extract just the relevant text. After that I had to do some tweaking for it to work on a local machine. I didn't figure out why but when I ask a local LLM for a completion based on a larger text it just crashes so what I did instead is buffer them in batches of 3.
 ```python
@@ -219,7 +218,61 @@ return max(set(total), key=total.count)
 I think this is not the best way to do that and I should somehow think of a way to add weights to sentiments. I've had a lot of neutral results that were decided by one from the array and it was probably that the LLM returned some trash and it rolled it as neutral...
 
 ### Data presentation
+As for this part and since this is a PoC I decided to pick something easy and I went with simple plotting of the numbers. I've had some strugles with rerendering of matplotlib but I managed to fight those. Didn't know it can be so unintuitive to do such a small thing. This is the part that will surely become better as the solution matures and I will look to provide as much data as possible. This data can be plotted in a lot of ways. The PoC that is implemented on this commit is a simple bar chart but there will be a lot more. 
 
 ## How does this tie together
+The story of tying all this together is a fun one. I find it funny how all PoCs I did usually end up super weird. I've gone with a simple python script that calls all the things in separate subprocesses and threads.
+```python
+stop_event = Event()
+logger.info("Spawning api thread with model '%s'...", args.model)
+api_thread = Thread(target=run_api, args=(stop_event, args.model, args.use_cpu))
+api_thread.start()
+
+# Wait for the API to start
+while True:
+    logger.info("Waiting for api to start...")
+    time.sleep(1)
+    try:
+        response = requests.get("http://localhost:8000")
+        if response.status_code == 200:
+            logger.info("API started!")
+            break
+    except Exception:
+        continue
+    
+logger.info("Configuring plot...")    
+```
+Once the API is up and running we can call the scraping thread and give it all the parameters it needs to start scraping.
+```python
+queue = Queue()
+
+logger.info("Spawning thread to scrape blogs for search term '%s'...", args.term)
+scrape_thread = Thread(target=run_cli, args=(stop_event, queue, args.term, args.sample_size, logger))
+scrape_thread.start()
+
+while True:
+    try:
+        line = queue.get()
+        process_line(line, memory, args.term, bar, figure, axes, logger)
+    except KeyboardInterrupt:
+        logger.info("Received interupt...")
+        break
+    
+logger.info("Stopping threads...")
+stop_event.set()
+
+api_thread.join()
+scrape_thread.join()
+logger.info("Threads stopped")
+```
+Since there aren't really `Channel`s in python I've went with a simple `Queue` between the main loop and the cli loop where the cli loop reads data and puts it in the queue, and main thread is reading the said data and display it in a plot. This part will probably be separated into multiple microservices for the production setup.
 
 ## Conclusion
+I finally feel like I have a meaningful idea. This project will be fun as it grows and I will for sure write more posts about it and will definitely dive into this. I think all developers should have some kind of drive after work. Work is a place of stress and tention whereas our side-projects are our passion and free time. I have a strong desire to create and its an uncontrollable need for me.
+
+I've been asked a couple of times by non-tech friends who feel like we do magic something like:
+> Aren't you afraid that someone will steel your ideas and make huge profits off of it?
+
+Honestly I don't know. I still haven't created anything profitable and don't know how that will look like. I think that it will be a huge compliment if someone copies my idea and sells it better. I am not a salesperson I am a developer and that is something that one has to learn.
+
+Until the big jump in the world of micro-saas, cheers!
